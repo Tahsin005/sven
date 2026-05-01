@@ -18,6 +18,22 @@ const app = express();
 
 app.use(express.json());
 
+app.post("/signup", async(req, res) => {
+
+});
+
+app.post("/signin", async(req, res) => {
+
+});
+
+app.get("/conversations", async(req, res) => {
+
+});
+
+app.get("/conversations/:conversationId", async(req, res) => {
+
+});
+
 app.post("/sven_ask", async (req, res) => {
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
     res.setHeader("Transfer-Encoding", "chunked");
@@ -68,6 +84,16 @@ app.post("/sven_ask", async (req, res) => {
 
     // close the event stream
     res.end();
+});
+
+app.post("/sven_ask/follow_up", async (req, res) => {
+    // get the existing chat from db
+
+    // forward the history to the llm
+
+    // (TODO) - context engineering here
+
+    // stream the response to the user
 });
 
 app.listen(3000, () => console.log("Server is running on port 3000"));
