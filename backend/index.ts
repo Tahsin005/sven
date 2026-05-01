@@ -105,6 +105,16 @@ app.post("/sven_ask", middleware, async (req: CustomRequest, res) => {
 
         const webSearchResult = webSearchResponse.results;
 
+        const pendingMessage = await prisma.message.create({
+            data: {
+                content: "",
+                role: "assistant",
+                conversationId: conversation.id,
+                status: "PENDING",
+                sources: webSearchResult
+            }
+        });
+
         // do some context engineering on the prompt + web search response
         const prompt = PROMPT_TEMPLATE
         .replace("{{WEB_SEARCH_RESULTS}}", JSON.stringify(webSearchResult))
@@ -118,6 +128,7 @@ app.post("/sven_ask", middleware, async (req: CustomRequest, res) => {
         );
 
         res.write(`<CONVERSATION_ID>${conversation.id}</CONVERSATION_ID>\n`);
+        res.write(`<MESSAGE_ID>${pendingMessage.id}</MESSAGE_ID>\n`);
 
         let assistantContent = "";
         if (llmResponse.success && llmResponse.stream) {
@@ -137,11 +148,11 @@ app.post("/sven_ask", middleware, async (req: CustomRequest, res) => {
         }))));
         res.write("\n</SOURCES>\n");
 
-        await prisma.message.create({
+        await prisma.message.update({
+            where: { id: pendingMessage.id },
             data: {
                 content: assistantContent,
-                role: "assistant",
-                conversationId: conversation.id
+                status: "COMPLETED"
             }
         });
 
@@ -193,6 +204,16 @@ app.post("/sven_ask/follow_up", middleware, async (req: CustomRequest, res) => {
         });
         const webSearchResult = webSearchResponse.results;
 
+        const pendingMessage = await prisma.message.create({
+            data: {
+                content: "",
+                role: "assistant",
+                conversationId,
+                status: "PENDING",
+                sources: webSearchResult
+            }
+        });
+
         // context engineering
         const prompt = PROMPT_TEMPLATE
         .replace("{{WEB_SEARCH_RESULTS}}", JSON.stringify(webSearchResult))
@@ -214,6 +235,8 @@ app.post("/sven_ask/follow_up", middleware, async (req: CustomRequest, res) => {
             messages
         });
 
+        res.write(`<MESSAGE_ID>${pendingMessage.id}</MESSAGE_ID>\n`);
+
         let assistantContent = "";
         for await (const chunk of stream) {
             const token = chunk.choices?.[0]?.delta?.content;
@@ -230,11 +253,11 @@ app.post("/sven_ask/follow_up", middleware, async (req: CustomRequest, res) => {
         res.write("\n</SOURCES>\n");
 
         // Save assistant message
-        await prisma.message.create({
+        await prisma.message.update({
+            where: { id: pendingMessage.id },
             data: {
                 content: assistantContent,
-                role: "assistant",
-                conversationId
+                status: "COMPLETED"
             }
         });
 

@@ -45,9 +45,16 @@ model Message {
   conversationId String
   conversation Conversation @relation(fields: [conversationId], references: [id])
   createdAt DateTime @default(now())
+  status MessageStatus @default(COMPLETED)
+  sources Json?
 }
 
 enum MessageRole {
   user
   assistant
+}
+
+enum MessageStatus {
+  PENDING
+  COMPLETED
 }
