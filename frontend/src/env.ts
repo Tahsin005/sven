@@ -1,2 +1,4 @@
 export const SUPABASE_URL = process.env.BUN_PUBLIC_SUPABASE_URL!;
 export const SUPABASE_KEY = process.env.BUN_PUBLIC_SUPABASE_PUBLISHABLE_KEY!;
+
+export const BACKEND_URL = process.env.BUN_PUBLIC_BACKEND_URL!;
