@@ -18,14 +18,6 @@ const app = express();
 
 app.use(express.json());
 
-app.post("/signup", async(req, res) => {
-
-});
-
-app.post("/signin", async(req, res) => {
-
-});
-
 app.get("/conversations", async(req, res) => {
 
 });
@@ -96,4 +88,4 @@ app.post("/sven_ask/follow_up", async (req, res) => {
     // stream the response to the user
 });
 
-app.listen(3000, () => console.log("Server is running on port 3000"));
+app.listen(5000, () => console.log("Server is running on port 5000"));
