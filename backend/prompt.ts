@@ -3,10 +3,29 @@ export const SYSTEM_PROMPT = `
 
     You also need to return follow up questions to the user based on the question they have asked.
     The response needs to be structured like this - 
-    {
-        followUps: [string],
-        answer: string
-    }
+    <ANSWER>
+        This is the main response for the user query
+    </ANSWER>
+
+    <FOLLOW_UPS>
+        <question>first follow up question</question>
+        <question>second follow up question</question>
+        <question>third follow up question</question>
+    </FOLLOW_UPS>
+
+    Example - 
+    Query - I want to learn Golang, can you suggest me the best way to learn it?
+
+    Answer - 
+    <ANSWER>
+        For sure, the best resource to learn golang is the official documentation at https://go.dev/doc
+    </ANSWER>
+    <FOLLOW_UPS>
+        <question>What is your current experience with programming?</question>
+        <question>Do you prefer interactive browser-based learning, video courses, or reading a book?</question>
+        <question>Are you learning Go for a specific area like web development, DevOps, or system tools?</question>
+        <question>Would you rather stick to free resources, or are you open to paid courses?</question>
+    </FOLLOW_UPS>
 `;
 
 
