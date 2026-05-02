@@ -5,6 +5,7 @@ import { BACKEND_URL } from "@/env";
 import { askSven, type StreamResponse } from "@/lib/api";
 import { ArrowRight, Search, Globe, Library } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Message {
   id: string;
@@ -24,20 +25,20 @@ export default function Dashboard() {
   const [query, setQuery] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         setJwt(session.access_token);
-      } else {
-        navigate("/auth");
       }
     });
-  }, [navigate]);
+  }, []);
 
   useEffect(() => {
     if (conversationId && jwt) {
+      setIsInitialLoading(true);
       fetch(`${BACKEND_URL}/conversations/${conversationId}`, {
         headers: { Authorization: jwt }
       })
@@ -80,7 +81,8 @@ export default function Dashboard() {
           }));
         }
       })
-      .catch(err => console.error("Failed to load chat history:", err));
+      .catch(err => console.error("Failed to load chat history:", err))
+      .finally(() => setIsInitialLoading(false));
     } else {
       setMessages([]);
     }
@@ -181,8 +183,37 @@ export default function Dashboard() {
 
   return (
     <div className="flex flex-col h-full w-full max-w-4xl mx-auto px-4 py-8 relative">
-      <div className="flex-1 overflow-y-auto space-y-10 pb-40 scrollbar-hide">
-        {messages.map((msg, idx) => (
+      <div className="flex-1 overflow-y-auto space-y-10 pb-40 pr-2">
+        {isInitialLoading && messages.length === 0 ? (
+          <div className="space-y-10">
+            <div className="flex flex-col space-y-4">
+              <div className="flex justify-end">
+                <Skeleton className="h-16 w-[60%] rounded-3xl" />
+              </div>
+              <div className="flex gap-4">
+                <Skeleton className="w-8 h-8 rounded shrink-0" />
+                <div className="flex-1 space-y-3 pt-2">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-[90%]" />
+                  <Skeleton className="h-4 w-[95%]" />
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-col space-y-4">
+              <div className="flex justify-end">
+                <Skeleton className="h-16 w-[40%] rounded-3xl" />
+              </div>
+              <div className="flex gap-4">
+                <Skeleton className="w-8 h-8 rounded shrink-0" />
+                <div className="flex-1 space-y-3 pt-2">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-[85%]" />
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          messages.map((msg, idx) => (
           <div key={msg.id} className="flex flex-col space-y-4">
             {msg.role === "user" ? (
               <div className="flex justify-end">
@@ -200,7 +231,14 @@ export default function Dashboard() {
                     {msg.content ? (
                       <ReactMarkdown>{msg.content}</ReactMarkdown>
                     ) : (
-                      msg.status === "PENDING" ? <span className="animate-pulse">Thinking...</span> : ""
+                      msg.status === "PENDING" ? (
+                        <div className="space-y-3 pt-2 w-full">
+                          <Skeleton className="h-4 w-full" />
+                          <Skeleton className="h-4 w-[90%]" />
+                          <Skeleton className="h-4 w-[95%]" />
+                          <Skeleton className="h-4 w-[85%]" />
+                        </div>
+                      ) : ""
                     )}
                   </div>
                   
@@ -247,7 +285,7 @@ export default function Dashboard() {
               </div>
             )}
           </div>
-        ))}
+        )))}
         <div ref={bottomRef} />
       </div>
       

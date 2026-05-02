@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router";
 import { Plus, MessageSquare, LogOut } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { BACKEND_URL } from "@/env";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const supabase = createClient();
 
@@ -14,12 +15,16 @@ interface Conversation {
 
 export default function Sidebar({ onClose }: { onClose?: () => void }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     async function fetchConversations() {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!session) {
+        setIsLoading(false);
+        return;
+      }
       
       try {
         const res = await fetch(`${BACKEND_URL}/conversations`, {
@@ -31,6 +36,8 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
         }
       } catch (error) {
         console.error("Failed to fetch conversations", error);
+      } finally {
+        setIsLoading(false);
       }
     }
     fetchConversations();
@@ -63,19 +70,27 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
 
       <div className="flex-1 overflow-y-auto space-y-1 mt-8">
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-2">History</p>
-        {conversations.map((conv) => (
-          <Link 
-            key={conv.id} 
-            to={`/c/${conv.id}`}
-            onClick={() => {
-              if (onClose) onClose();
-            }}
-            className="flex items-center gap-2 p-2 rounded-md hover:bg-secondary transition-colors text-sm text-foreground truncate"
-          >
-            <MessageSquare size={14} className="shrink-0 text-muted-foreground" />
-            <span className="truncate">{conv.title || "New Conversation"}</span>
-          </Link>
-        ))}
+        {isLoading ? (
+          <div className="space-y-2 px-2">
+            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-9 w-[80%]" />
+            <Skeleton className="h-9 w-[90%]" />
+          </div>
+        ) : (
+          conversations.map((conv) => (
+            <Link 
+              key={conv.id} 
+              to={`/c/${conv.id}`}
+              onClick={() => {
+                if (onClose) onClose();
+              }}
+              className="flex items-center gap-2 p-2 rounded-md hover:bg-secondary transition-colors text-sm text-foreground truncate"
+            >
+              <MessageSquare size={14} className="shrink-0 text-muted-foreground" />
+              <span className="truncate">{conv.title || "New Conversation"}</span>
+            </Link>
+          ))
+        )}
       </div>
 
       <div className="mt-auto pt-4">
