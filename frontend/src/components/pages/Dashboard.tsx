@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router";
 import { createClient } from "@/lib/supabase/client";
 import { BACKEND_URL } from "@/env";
 import { askSven, type StreamResponse } from "@/lib/api";
-import { ArrowRight, Search, Globe, Library } from "lucide-react";
+import { ArrowRight, Search, Globe, Library, RefreshCw } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -26,6 +26,8 @@ export default function Dashboard() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(false);
+  const [showReloadForMsgId, setShowReloadForMsgId] = useState<string | null>(null);
+  const [isReloadingMsg, setIsReloadingMsg] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -91,6 +93,71 @@ export default function Dashboard() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    if (messages.length === 0) return;
+    
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg && lastMsg.role === "assistant" && lastMsg.status === "PENDING" && !isStreaming) {
+      const timer = setTimeout(() => {
+        setShowReloadForMsgId(lastMsg.id);
+      }, 20000);
+      return () => clearTimeout(timer);
+    } else {
+      setShowReloadForMsgId(null);
+    }
+  }, [messages, isStreaming]);
+
+  const handleReloadMessage = async (msgId: string) => {
+    setIsReloadingMsg(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/messages/${msgId}`, {
+        headers: { Authorization: jwt }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        
+        let text = data.content;
+        let followUps: string[] | undefined = undefined;
+        if (data.role === 'assistant') {
+            const answerMatch = text.match(/<ANSWER>([\s\S]*?)(?:<\/ANSWER>|$)/);
+            if (answerMatch && answerMatch[1]) text = answerMatch[1].trim();
+            else {
+                text = text
+                 .replace(/<CONVERSATION_ID>[\s\S]*?<\/CONVERSATION_ID>/g, "")
+                 .replace(/<MESSAGE_ID>[\s\S]*?<\/MESSAGE_ID>/g, "")
+                 .replace(/<SOURCES>[\s\S]*?(?:<\/SOURCES>|$)/g, "")
+                 .replace(/<FOLLOW_UPS>[\s\S]*?(?:<\/FOLLOW_UPS>|$)/g, "")
+                 .replace(/<ANSWER>/g, "")
+                 .replace(/<\/ANSWER>/g, "").trim();
+            }
+
+            const followUpsMatch = data.content.match(/<FOLLOW_UPS>([\s\S]*?)(?:<\/FOLLOW_UPS>|$)/);
+            if (followUpsMatch && followUpsMatch[1]) {
+               const questionsStr = followUpsMatch[1];
+               const questionMatches = [...questionsStr.matchAll(/<question>([\s\S]*?)(?:<\/question>|$)/g)];
+               followUps = questionMatches.map(qm => qm[1] ? qm[1].trim() : "").filter(Boolean);
+            }
+        }
+
+        const updatedMsg: Message = {
+           id: String(data.id),
+           role: data.role,
+           content: text,
+           status: data.status,
+           sources: data.sources,
+           followUps
+        };
+
+        setMessages(prev => prev.map(m => m.id === msgId ? updatedMsg : m));
+        setShowReloadForMsgId(null);
+      }
+    } catch (error) {
+      console.error("Failed to reload message:", error);
+    } finally {
+      setIsReloadingMsg(false);
+    }
+  };
 
   const submitQuery = async (textToSubmit: string) => {
     if (!textToSubmit.trim() || isStreaming) return;
@@ -237,6 +304,18 @@ export default function Dashboard() {
                           <Skeleton className="h-4 w-[90%]" />
                           <Skeleton className="h-4 w-[95%]" />
                           <Skeleton className="h-4 w-[85%]" />
+                          {showReloadForMsgId === msg.id && (
+                             <div className="pt-4 animate-in fade-in zoom-in duration-300">
+                               <button 
+                                 onClick={() => handleReloadMessage(msg.id)}
+                                 disabled={isReloadingMsg}
+                                 className="flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground text-sm font-medium rounded-lg hover:bg-secondary/80 transition-all disabled:opacity-50 border border-border"
+                               >
+                                 <RefreshCw size={16} className={isReloadingMsg ? "animate-spin" : ""} />
+                                 {isReloadingMsg ? "Reloading..." : "Reload Message"}
+                               </button>
+                             </div>
+                          )}
                         </div>
                       ) : ""
                     )}
